@@ -1,59 +1,47 @@
 package client;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.Scanner;
 
 public class Main {
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket("localhost", 5000)) {
-            // reading the input from server
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            // returning the output to the server : true statement is to flush the buffer
-            // otherwise
-            // we have to do it manuallyy
-            PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
-
-            // taking the user input
+        try (DatagramSocket clientSocket = new DatagramSocket()) {
+            InetAddress address = InetAddress.getByName("localhost");
             Scanner scanner = new Scanner(System.in);
+            byte[] buffer = new byte[1024];
             String userInput;
-            String response;
             String clientName = "empty";
 
-            Client clientRun = new Client(socket);
-
-            new Thread(clientRun).start();
-            // loop closes when user enters exit command
-
             do {
-
                 if (clientName.equals("empty")) {
-                    System.out.println("Enter your name ");
+                    System.out.println("Enter your name:");
                     userInput = scanner.nextLine();
                     clientName = userInput;
-                    output.println(userInput);
-                    if (userInput.equals("exit")) {
-                        break;
-                    }
                 } else {
-                    String message = ("(" + clientName + ")" + ":");
-                    System.out.println(message);
+                    System.out.println("(" + clientName + "):");
                     userInput = scanner.nextLine();
-                    output.println(message + " " + userInput);
-                    if (userInput.equals("exit")) {
-                        // reading the input from server
-                        break;
-                    }
                 }
+
+                // Creer le message a envoyer au serveur
+                String message = "(" + clientName + "): " + userInput;
+                byte[] sendData = message.getBytes();
+
+                // Creer et envoyer un paquet UDP au serveur
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, 5000);
+                clientSocket.send(sendPacket);
+
+                // Recevoir la reponse du serveur
+                DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
+                clientSocket.receive(receivePacket);
+                String receivedMessage = new String(receivePacket.getData(), 0, receivePacket.getLength());
+                System.out.println(receivedMessage);
 
             } while (!userInput.equals("exit"));
 
         } catch (Exception e) {
-            System.out.println("Exception occured in client main: " + e.getStackTrace());
+            System.out.println("Error occurred in client: " + e.getMessage());
         }
     }
 }
