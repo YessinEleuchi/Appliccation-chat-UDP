@@ -1,30 +1,37 @@
 package server;
-
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.util.ArrayList;
 
 public class Main {
 
     public static void main(String[] args) {
-        // using serversocket as argument to automatically close the socket
-        // the port number is unique for each server
+        //Liste pour gerer tous les clients (optionnel en UDP, mais gardee pour coherence)
+        ArrayList<ServerThread> threadList = new ArrayList<>();
 
-        // list to add all the clients thread
-        ArrayList<Server> threadList = new ArrayList<>();
-        try (ServerSocket serversocket = new ServerSocket(5000)) {
+        try (DatagramSocket serverSocket = new DatagramSocket(5000)) {
+            System.out.println("Server is waiting for clients...");
+
+            byte[] buffer = new byte[1024];
+
             while (true) {
-                Socket socket = serversocket.accept();
-                Server Server = new Server(socket, threadList);
-                // starting the thread
-                threadList.add(Server);
-                Server.start();
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                // Reception du message du client
+                serverSocket.receive(packet);
 
-                // get all the list of currently running thread
+                String receivedMessage = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("Server received: " + receivedMessage);
 
+                // Envoi de la reponse a tous les clients
+                String response = "Server says: " + receivedMessage;
+                byte[] responseData = response.getBytes();
+
+                // Envoyer la reponse au client qui a envoye le paquet
+                DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, packet.getAddress(), packet.getPort());
+                serverSocket.send(responsePacket);
             }
         } catch (Exception e) {
-            System.out.println("Error occured in main: " + e.getStackTrace());
+            System.out.println("Error occurred in server: " + e.getMessage());
         }
     }
 }

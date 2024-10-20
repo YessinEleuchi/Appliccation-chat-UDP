@@ -40,7 +40,7 @@ public class Main {
                         break;
                     }
                 } else {
-                    String message = ("(" + clientName + ")" + " message : ");
+                    String message = ("(" + clientName + ")" + ":");
                     System.out.println(message);
                     userInput = scanner.nextLine();
                     output.println(message + " " + userInput);
