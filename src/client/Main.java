@@ -5,43 +5,60 @@ import java.net.InetAddress;
 import java.util.Scanner;
 
 public class Main {
-
     public static void main(String[] args) {
-        try (DatagramSocket clientSocket = new DatagramSocket()) {
-            InetAddress address = InetAddress.getByName("localhost");
+        try {
+            DatagramSocket socket = new DatagramSocket();
+            InetAddress serverAddress = InetAddress.getByName("localhost");
+            int serverPort = 5000;
+
+            new Thread(new ClientRunnable(socket)).start();
+
             Scanner scanner = new Scanner(System.in);
-            byte[] buffer = new byte[1024];
             String userInput;
             String clientName = "empty";
 
             do {
                 if (clientName.equals("empty")) {
-                    System.out.println("Enter your name:");
-                    userInput = scanner.nextLine();
-                    clientName = userInput;
-                } else {
-                    System.out.println("(" + clientName + "):");
-                    userInput = scanner.nextLine();
+                    System.out.println("Enter your name: ");
+                    clientName = scanner.nextLine();
+                    sendMessage(socket, serverAddress, serverPort, clientName);
                 }
 
-                // Creer le message a envoyer au serveur
-                String message = "(" + clientName + "): " + userInput;
-                byte[] sendData = message.getBytes();
+                System.out.println("Enter your message (use '@recipient' for private messages): ");
+                userInput = scanner.nextLine();
 
-                // Creer et envoyer un paquet UDP au serveur
-                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, address, 5000);
-                clientSocket.send(sendPacket);
-
-                // Recevoir la reponse du serveur
-                DatagramPacket receivePacket = new DatagramPacket(buffer, buffer.length);
-                clientSocket.receive(receivePacket);
-                String receivedMessage = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                System.out.println(receivedMessage);
+                if (userInput.startsWith("@")) {
+                    // Message privé
+                    int spaceIndex = userInput.indexOf(" ");
+                    if (spaceIndex != -1) {
+                        String recipient = userInput.substring(1, spaceIndex);  // Récupère le nom du destinataire après "@"
+                        String messageContent = userInput.substring(spaceIndex + 1);  // Récupère le contenu du message après le nom du destinataire
+                        String message = "private:" + recipient + ":" + clientName + ": " + messageContent;
+                        sendMessage(socket, serverAddress, serverPort, message);
+                    } else {
+                        System.out.println("Invalid private message format. Use '@recipient message'.");
+                    }
+                } else {
+                    // Message broadcast
+                    String message = "broadcast:" + clientName + ": " + userInput;
+                    sendMessage(socket, serverAddress, serverPort, message);
+                }
 
             } while (!userInput.equals("exit"));
 
+            socket.close();
         } catch (Exception e) {
-            System.out.println("Error occurred in client: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendMessage(DatagramSocket socket, InetAddress address, int port, String message) {
+        try {
+            byte[] buffer = message.getBytes();
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, port);
+            socket.send(packet);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

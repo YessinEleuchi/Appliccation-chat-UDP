@@ -1,12 +1,10 @@
 package client;
-import java.io.IOException;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
 public class ClientRunnable implements Runnable {
-
     private DatagramSocket socket;
-    private byte[] buffer = new byte[1024];
 
     public ClientRunnable(DatagramSocket socket) {
         this.socket = socket;
@@ -14,23 +12,24 @@ public class ClientRunnable implements Runnable {
 
     @Override
     public void run() {
+        byte[] buffer = new byte[1024];
         try {
             while (true) {
-                // Recevoir la reponse du serveur
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet);
-
-                // Afficher la reponse du serveur
                 String response = new String(packet.getData(), 0, packet.getLength());
-                System.out.println(response);
 
-                // Sortir de la boucle si le message est "exit"
-                if (response.trim().equals("exit")) {
-                    break;
+                if (response.equals("server_shutdown")) {
+                    System.out.println("Server has shut down. Exiting...");
+                    break;  // Quitte la boucle pour arrêter le client
                 }
+
+                System.out.println(response); // Affiche les autres messages
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            socket.close();  // Fermer le socket après avoir quitté la boucle
         }
     }
 }
